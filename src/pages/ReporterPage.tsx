@@ -10,27 +10,7 @@ import { ShieldAlert, Send, UserCheck, Home, Zap } from 'lucide-react';
 export const ReporterPage: React.FC = () => {
   const { addIncident } = useIncidents();
   const { shelters } = useShelters();
-  const [activeTab, setActiveTab] = useState<'SOS' | 'REPORT' | 'SAFE' | 'SHELTERS'>('SOS');
-
-  const handleSOS = () => {
-    addIncident({
-      title: 'CRITICAL 1-TAP SOS DISTRESS SIGNAL',
-      category: 'MEDICAL_EMERGENCY',
-      severity: 'CRITICAL',
-      status: 'REPORTED',
-      location: {
-        lat: 19.0760,
-        lng: 72.8777,
-        address: 'GPS Auto-Detected Distress Location',
-        zone: 'Metro Sector',
-      },
-      reportedBy: 'Citizen SOS Mobile App',
-      strandedCount: 1,
-      injuredCount: 0,
-      urgentNeeds: ['EVACUATION', 'PARAMEDIC'],
-      description: 'Emergency 1-tap SOS signal triggered by citizen device.',
-    });
-  };
+  const [activeTab, setActiveTab] = useState<'REPORT' | 'SAFE' | 'SHELTERS'>('REPORT');
 
   const handleFormReport = (data: {
     title: string;
@@ -44,6 +24,7 @@ export const ReporterPage: React.FC = () => {
     injuredCount: number;
     urgentNeeds: string[];
     description: string;
+    photoUrl?: string;
   }) => {
     addIncident({
       title: data.title,
@@ -61,7 +42,8 @@ export const ReporterPage: React.FC = () => {
       injuredCount: data.injuredCount,
       urgentNeeds: data.urgentNeeds,
       description: data.description,
-    });
+      photoUrl: data.photoUrl,
+    } as any);
   };
 
   return (
@@ -80,27 +62,26 @@ export const ReporterPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Mobile Navigation Tabs */}
-      <div className="grid grid-cols-4 gap-1.5 p-1.5 bg-white border-2 border-slate-200 rounded-2xl shadow-sm">
-        <button
-          onClick={() => setActiveTab('SOS')}
-          className={`py-2.5 rounded-xl flex flex-col items-center gap-1 font-display font-black text-xs transition-all active:scale-95 ${
-            activeTab === 'SOS'
-              ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-sm border border-red-700'
-              : 'text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          <ShieldAlert className="w-4 h-4" />
-          <span>1-TAP SOS</span>
-        </button>
+      {/* SOS BUTTON — Always visible at top */}
+      <div className="bg-white border-2 border-red-200 rounded-2xl p-4 shadow-sm">
+        <SOSButton />
+      </div>
 
+      {/* Divider */}
+      <div className="flex items-center gap-3">
+        <div className="flex-1 h-px bg-slate-300" />
+        <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">or use options below</span>
+        <div className="flex-1 h-px bg-slate-300" />
+      </div>
+
+      {/* Secondary Navigation Tabs */}
+      <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-white border-2 border-slate-200 rounded-2xl shadow-sm">
         <button
           onClick={() => setActiveTab('REPORT')}
-          className={`py-2.5 rounded-xl flex flex-col items-center gap-1 font-display font-black text-xs transition-all active:scale-95 ${
-            activeTab === 'REPORT'
+          className={`py-2.5 rounded-xl flex flex-col items-center gap-1 font-display font-black text-xs transition-all active:scale-95 ${activeTab === 'REPORT'
               ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-sm border border-blue-700'
               : 'text-slate-600 hover:bg-slate-100'
-          }`}
+            }`}
         >
           <Send className="w-4 h-4" />
           <span>REPORT</span>
@@ -108,11 +89,10 @@ export const ReporterPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('SAFE')}
-          className={`py-2.5 rounded-xl flex flex-col items-center gap-1 font-display font-black text-xs transition-all active:scale-95 ${
-            activeTab === 'SAFE'
+          className={`py-2.5 rounded-xl flex flex-col items-center gap-1 font-display font-black text-xs transition-all active:scale-95 ${activeTab === 'SAFE'
               ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-sm border border-emerald-700'
               : 'text-slate-600 hover:bg-slate-100'
-          }`}
+            }`}
         >
           <UserCheck className="w-4 h-4" />
           <span>MARK SAFE</span>
@@ -120,11 +100,10 @@ export const ReporterPage: React.FC = () => {
 
         <button
           onClick={() => setActiveTab('SHELTERS')}
-          className={`py-2.5 rounded-xl flex flex-col items-center gap-1 font-display font-black text-xs transition-all active:scale-95 ${
-            activeTab === 'SHELTERS'
+          className={`py-2.5 rounded-xl flex flex-col items-center gap-1 font-display font-black text-xs transition-all active:scale-95 ${activeTab === 'SHELTERS'
               ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm border border-purple-700'
               : 'text-slate-600 hover:bg-slate-100'
-          }`}
+            }`}
         >
           <Home className="w-4 h-4" />
           <span>SHELTERS</span>
@@ -133,7 +112,6 @@ export const ReporterPage: React.FC = () => {
 
       {/* Active Tab Component */}
       <div className="bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-sm">
-        {activeTab === 'SOS' && <SOSButton onTriggerSOS={handleSOS} />}
         {activeTab === 'REPORT' && <IncidentForm onSubmitReport={handleFormReport as any} />}
         {activeTab === 'SAFE' && <SafeCheckin />}
         {activeTab === 'SHELTERS' && <NearbyShelters shelters={shelters} />}

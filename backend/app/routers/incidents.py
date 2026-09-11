@@ -33,7 +33,12 @@ async def get_recommendation_for_incident(incident_id: str):
 @router.post("", status_code=201)
 async def create_incident(payload: Dict[str, Any] = Body(...)):
     result = await CoordinationAgent.handle_new_incident(payload)
-    return result["incident"]
+    # Return incident model merged with notification IDs for client visibility
+    incident = result["incident"]
+    response = incident.model_dump() if hasattr(incident, 'model_dump') else incident
+    if "notifications" in result:
+        response["notifications"] = result["notifications"]
+    return response
 
 @router.post("/reset-mock")
 async def reset_mock_state():

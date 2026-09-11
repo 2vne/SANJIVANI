@@ -339,7 +339,7 @@ export const apiService = {
   // Actions
   createIncident: async (incident: Partial<Incident>): Promise<Incident | null> => {
     try {
-      const payload = {
+      const payload: Record<string, any> = {
         title: incident.title,
         description: incident.description,
         category: incident.category,
@@ -351,6 +351,8 @@ export const apiService = {
         injured: incident.injuredCount || 0,
         source: incident.reportedBy || 'FIELD_REPORTER',
       };
+      if ((incident as any).is_sos) payload.is_sos = true;
+      if ((incident as any).photoUrl) payload.photoUrl = (incident as any).photoUrl;
       const res = await fetch(`${API_BASE}/incidents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

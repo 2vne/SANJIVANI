@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { IncidentCategory, SeverityLevel } from '../../types';
 import { CATEGORY_LABELS } from '../../utils/constants';
-import { Send, MapPin, Navigation, FileText, CheckCircle, AlertCircle, Search, Loader2 } from 'lucide-react';
+import { Send, MapPin, Navigation, FileText, CheckCircle, AlertCircle, Search, Loader2, Camera, X, Image } from 'lucide-react';
 
 interface IncidentFormProps {
   onSubmitReport: (data: {
@@ -15,6 +15,7 @@ interface IncidentFormProps {
     injuredCount: number;
     urgentNeeds: string[];
     description: string;
+    photoUrl?: string;
   }) => void;
 }
 
@@ -33,6 +34,11 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ onSubmitReport }) =>
   const [isGeolocating, setIsGeolocating] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geoStatus, setGeoStatus] = useState<string | null>(null);
+
+  // Photo state
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+  const [photoName, setPhotoName] = useState<string>('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const needsOptions = ['MEDICAL', 'EVACUATION', 'CLEAN_WATER', 'FOOD_RATIONS', 'SHELTER', 'POWER_GENERATOR'];
 
@@ -106,6 +112,25 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ onSubmitReport }) =>
     );
   };
 
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setPhotoName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setPhotoBase64(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removePhoto = () => {
+    setPhotoBase64(null);
+    setPhotoName('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !address) return;
@@ -120,6 +145,7 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ onSubmitReport }) =>
       injuredCount,
       urgentNeeds: selectedNeeds,
       description,
+      photoUrl: photoBase64 || undefined,
     });
     setSubmitted(true);
   };
@@ -132,8 +158,11 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ onSubmitReport }) =>
         <p className="text-xs text-slate-400 mt-2">
           Your emergency report has been transmitted to EOC Command and mapped dynamically at ({lat}, {lng}).
         </p>
+        {photoBase64 && (
+          <p className="text-xs text-cyan-400 mt-1">📷 Photo attached and stored with report.</p>
+        )}
         <button
-          onClick={() => setSubmitted(false)}
+          onClick={() => { setSubmitted(false); removePhoto(); }}
           className="mt-4 px-4 py-2 bg-slate-800 text-cyan-400 rounded text-xs font-bold border border-slate-700 hover:bg-slate-700"
         >
           SUBMIT ANOTHER REPORT
@@ -306,17 +335,65 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ onSubmitReport }) =>
                 type="button"
                 key={need}
                 onClick={() => toggleNeed(need)}
-                className={`px-2.5 py-1 rounded text-[11px] font-mono transition-all border ${
-                  isSelected
+                className={`px-2.5 py-1 rounded text-[11px] font-mono transition-all border ${isSelected
                     ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 font-bold'
                     : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
-                }`}
+                  }`}
               >
                 + {need.replace('_', ' ')}
               </button>
             );
           })}
         </div>
+      </div>
+
+      {/* Photo Upload Section */}
+      <div className="p-3 bg-slate-950/80 border border-slate-800 rounded-lg space-y-2">
+        <label className="text-xs font-mono text-slate-300 font-bold flex items-center gap-1.5">
+          <Camera className="w-4 h-4 text-amber-400" />
+          <span>ATTACH PHOTO EVIDENCE</span>
+        </label>
+
+        {photoBase64 ? (
+          <div className="relative">
+            <img
+              src={photoBase64}
+              alt="Attached evidence"
+              className="w-full max-h-40 object-cover rounded-lg border border-slate-700"
+            />
+            <button
+              type="button"
+              onClick={removePhoto}
+              className="absolute top-1 right-1 w-6 h-6 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center"
+            >
+              <X className="w-3.5 h-3.5 text-white" />
+            </button>
+            <div className="mt-1 text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+              <CheckCircle className="w-3 h-3" />
+              <span>{photoName} — attached & will be stored with report</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 border border-dashed border-slate-600 rounded-lg text-xs font-mono text-slate-400 hover:text-slate-200 flex items-center justify-center gap-2 transition-all"
+            >
+              <Image className="w-4 h-4" />
+              <span>Choose Photo / Take Picture</span>
+            </button>
+          </div>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handlePhotoSelect}
+          className="hidden"
+        />
       </div>
 
       {/* Additional Details */}
@@ -342,5 +419,3 @@ export const IncidentForm: React.FC<IncidentFormProps> = ({ onSubmitReport }) =>
     </form>
   );
 };
-
-

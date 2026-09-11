@@ -7,6 +7,7 @@ from ..repository import repository
 from ..utils.haversine import calculate_haversine_distance
 from .needs_assessment_agent import NeedsAssessmentAgent
 from .allocation_agent import AllocationAgent
+from .notification_service import dispatch_notifications
 
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 
@@ -147,6 +148,24 @@ class CoordinationAgent:
             actor=incident.source
         )
 
+        # ── NOTIFICATION DISPATCHER ─────────────────────────────────────
+        # Fires PagerDuty + Resend for SOS or CRITICAL/HIGH incidents
+        is_sos = bool(incident_data.get("is_sos") or incident_data.get("isSOS") or incident_data.get("sos"))
+        notif_result = await dispatch_notifications(
+            incident_id=incident.id,
+            title=incident.title,
+            severity=incident.severity,
+            category=incident.category,
+            latitude=incident.latitude,
+            longitude=incident.longitude,
+            is_sos=is_sos,
+        )
+        await emit_event("notifications.dispatched", {
+            "incidentId": incident.id,
+            "notifications": notif_result,
+        })
+        # ────────────────────────────────────────────────────────────────
+
         recommendation = await AllocationAgent.recommend_allocation(incident)
         if recommendation:
             await emit_event("allocation.recommended", {
@@ -157,7 +176,8 @@ class CoordinationAgent:
         return {
             "incident": incident,
             "assessment": assessment,
-            "recommendation": recommendation
+            "recommendation": recommendation,
+            "notifications": notif_result,
         }
 
     @classmethod
