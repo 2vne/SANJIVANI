@@ -30,3 +30,16 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Python (backend)
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
