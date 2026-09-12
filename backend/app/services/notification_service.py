@@ -6,6 +6,7 @@ Fires on: is_sos=True OR severity in [CRITICAL, HIGH]
 import os
 import json
 import httpx
+from typing import Optional
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 
@@ -28,13 +29,19 @@ async def trigger_pagerduty(
     latitude: float,
     longitude: float,
     is_sos: bool = False,
+    routing_key_override: Optional[str] = None
 ) -> dict:
+    routing_key = routing_key_override or PAGERDUTY_ROUTING_KEY
     if not ENABLE_PAGERDUTY:
         print("[PagerDuty] DISABLED — skipping")
-        return {"skipped": True}
-    if not PAGERDUTY_ROUTING_KEY:
-        print("[PagerDuty] ERROR — PAGERDUTY_ROUTING_KEY not set")
-        return {"error": "routing key missing"}
+        return {"skipped": True, "reason": "ENABLE_PAGERDUTY=false"}
+    if not routing_key:
+        print("[PagerDuty] ⚠️ WARNING — PAGERDUTY_ROUTING_KEY environment variable is missing on Netlify.")
+        return {
+            "skipped": True,
+            "status": "MISSING_ENV_VAR",
+            "error": "PAGERDUTY_ROUTING_KEY missing in Netlify Environment Variables. Please set PAGERDUTY_ROUTING_KEY in Netlify Dashboard."
+        }
 
     dedup_key = f"{incident_id}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
     pd_severity = (
