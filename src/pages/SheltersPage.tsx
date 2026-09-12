@@ -78,6 +78,7 @@ export const SheltersPage: React.FC = () => {
         capacity: capacity,
         currentOccupancy: baseOcc,
         status: 'OPEN',
+        isOpen: true,
         contactPhone: p.phone || '108',
         medicalStaffCount: p.type === 'hospital' ? 12 : 4,
         supplies: {

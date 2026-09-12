@@ -1,0 +1,6 @@
+
+> ps20-disaster-relief@1.0.0 build
+> tsc -b && vite build
+
+src/pages/SheltersPage.tsx(63,9): error TS2322: Type '{ id: string; name: string; location: { lat: number; lng: number; address: string; zone: string; }; capacity: number; currentOccupancy: number; status: string; contactPhone: string; medicalStaffCount: number; supplies: { ...; }; }[]' is not assignable to type 'Shelter[]'.
+  Property 'isOpen' is missing in type '{ id: string; name: string; location: { lat: number; lng: number; address: string; zone: string; }; capacity: number; currentOccupancy: number; status: string; contactPhone: string; medicalStaffCount: number; supplies: { ...; }; }' but required in type 'Shelter'.
