@@ -31,7 +31,7 @@ export const ZenAIChatbot: React.FC = () => {
         }
     }, [messages, isTyping, isOpen]);
 
-    const handleSend = () => {
+    const handleSend = async () => {
         if (!input.trim()) return;
 
         const userMsg: ChatMessage = {
@@ -45,40 +45,42 @@ export const ZenAIChatbot: React.FC = () => {
         setInput('');
         setIsTyping(true);
 
-        // Fast simulated AI response using real dashboard context
-        setTimeout(() => {
-            const lowerInput = userMsg.text.toLowerCase();
-            let botResponse = "I've logged your request. Command Center has been notified.";
+        try {
+            const LIVE_BACKEND = 'https://disaster-git-main-danish-jains-projects.vercel.app';
+            const API_BASE = import.meta.env.VITE_API_BASE_URL || `${LIVE_BACKEND}/api`;
 
-            const activeIncidents = incidents.filter(i => i.status !== 'RESOLVED' && i.status !== 'CANCELLED').length;
-            const criticalIncidents = incidents.filter(i => i.severity === 'CRITICAL').length;
-            const availableResources = resources.filter(r => r.status === 'AVAILABLE').length;
-            const totalShelters = shelters.length;
+            const response = await fetch(`${API_BASE}/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: input.trim(), history: messages })
+            });
 
-            if (lowerInput.includes('status') || lowerInput.includes('update') || lowerInput.includes('dashboard')) {
-                botResponse = `COMMAND CENTER UPDATE: There are currently ${activeIncidents} active disaster incidents (${criticalIncidents} CRITICAL). We have ${availableResources} emergency response units on standby ready for dispatch.`;
-            } else if (lowerInput.includes('hello') || lowerInput.includes('hi')) {
-                botResponse = "Hello! I am Zen AI, your emergency coordinator assistant. How can I assist your sector today?";
-            } else if (lowerInput.includes('sos') || lowerInput.includes('help')) {
-                botResponse = `🚨 High Priority SOS acknowledged. We have ${availableResources} available units remaining. Routing immediate NDRF resources to your coordinates.`;
-            } else if (lowerInput.includes('shelter')) {
-                const openShelters = shelters.filter(s => s.status === 'OPEN').length;
-                botResponse = `Shelter Network Status: We are currently monitoring ${totalShelters} live safe havens, of which ${openShelters} are actively OPEN and accepting evacuees. Please check the Shelters network tab for real-time occupancy.`;
-            } else if (lowerInput.includes('resource') || lowerInput.includes('ambulance') || lowerInput.includes('fire')) {
-                botResponse = `We currently have ${resources.length} total registered emergency resources, with ${availableResources} units actively marked as AVAILABLE for instant dispatch.`;
-            }
+            if (!response.ok) throw new Error('API Error');
+            const data = await response.json();
 
             setMessages(prev => [
                 ...prev,
                 {
                     id: (Date.now() + 1).toString(),
                     sender: 'bot',
-                    text: botResponse,
+                    text: data.text || "I was unable to retrieve data from the backend.",
                     timestamp: new Date()
                 }
             ]);
+        } catch (err) {
+            console.error("Chat Error:", err);
+            setMessages(prev => [
+                ...prev,
+                {
+                    id: (Date.now() + 1).toString(),
+                    sender: 'bot',
+                    text: "⚠️ Connection to Sector Command lost. Unable to retrieve live database diagnostics.",
+                    timestamp: new Date()
+                }
+            ]);
+        } finally {
             setIsTyping(false);
-        }, 600);
+        }
     };
 
     return (

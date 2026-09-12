@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import socketio
 from .config import PORT
 from .services.coordination_agent import sio
+from .services.vector_store import faiss_store
 from .routers import (
     health,
     routes,
@@ -16,6 +17,7 @@ from .routers import (
     audit,
     broadcasts,
     analytics,
+    chatbot,
 )
 
 # Initialize FastAPI application
@@ -48,6 +50,7 @@ app.include_router(alerts.router, prefix=api_prefix)
 app.include_router(audit.router, prefix=api_prefix)
 app.include_router(broadcasts.router, prefix=api_prefix)
 app.include_router(analytics.router, prefix=api_prefix)
+app.include_router(chatbot.router, prefix=api_prefix)
 
 # Socket.IO lifecycle event handlers
 @sio.event
@@ -73,3 +76,6 @@ async def on_startup():
     print(f"[Socket.IO] Real-time engine active on port {PORT}")
     print("[Database Mode] In-Memory Fallback Repository with Supabase integration")
     print("=======================================================")
+    
+    # Init RAG Index
+    await faiss_store.hydrate_mock_state_from_db()
