@@ -11,12 +11,14 @@ import {
   EmergencyPlace,
 } from '../types';
 
-const API_BASE = 'http://localhost:5000/api';
+const LIVE_BACKEND = 'https://disaster-git-main-danish-jains-projects.vercel.app';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || `${LIVE_BACKEND}/api`;
 let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
-    socket = io('http://localhost:5000', {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || LIVE_BACKEND;
+    socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
     });
