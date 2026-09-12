@@ -1,7 +1,14 @@
 import { useDisasterContext } from '../context/DisasterContext';
 
 export function useShelters() {
-  const { shelters, updateShelter } = useDisasterContext();
+  const {
+    shelters,
+    updateShelter,
+    commandCenterLocation,
+    commandCenterRadiusKm,
+    setCommandCenterLocation,
+    setCommandCenterRadiusKm,
+  } = useDisasterContext();
 
   const updateOccupancy = (id: string, delta: number) => {
     updateShelter(id, (prev) => {
@@ -12,6 +19,10 @@ export function useShelters() {
 
   return {
     shelters,
+    commandCenterLocation,
+    commandCenterRadiusKm,
+    setCommandCenterLocation,
+    setCommandCenterRadiusKm,
     loading: false,
     updateShelter,
     updateOccupancy,

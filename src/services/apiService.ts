@@ -413,6 +413,7 @@ export const apiService = {
     return null;
   },
 
+
   simulateDelay: async (resourceId: string): Promise<any> => {
     try {
       const res = await fetch(`${API_BASE}/resources/${resourceId}/simulate-delay`, {
@@ -503,5 +504,60 @@ export const apiService = {
       console.error('Failed to reset mock state via REST API', e);
     }
     return null;
+  },
+
+  fetchSafeRoute: async (oLat: number, oLng: number, dLat: number, dLng: number): Promise<any> => {
+    try {
+      const res = await fetch(`${API_BASE}/safe-route?origin=${oLat},${oLng}&destination=${dLat},${dLng}`);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.error('Failed to fetch safe route via REST API', e);
+    }
+    return null;
+  },
+
+  geocodeAddress: async (
+    query: string
+  ): Promise<Array<{ label: string; address: string; lat: number; lng: number }>> => {
+    if (!query || query.trim().length < 2) return [];
+    try {
+      const res = await fetch(`${API_BASE}/safe-route/geocode?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.results) && json.results.length > 0) {
+          return json.results;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend geocoding failed, trying direct Nominatim fallback...', e);
+    }
+
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6`,
+        {
+          headers: {
+            'Accept-Language': 'en',
+            'User-Agent': 'SANJIVANI-Relief-App/1.0',
+          },
+        }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          return data.map((item: any) => ({
+            label: item.display_name.split(',')[0],
+            address: item.display_name,
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon),
+          }));
+        }
+      }
+    } catch (e) {
+      console.error('Direct geocoding fallback failed:', e);
+    }
+    return [];
   },
 };

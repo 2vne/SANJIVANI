@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { 
-  ShieldAlert, 
-  Radio, 
-  Truck, 
-  Home, 
-  BarChart3, 
-  Clock, 
+import {
+  ShieldAlert,
+  Radio,
+  Truck,
+  Home,
+  BarChart3,
+  Clock,
   AlertTriangle,
   Send,
-  Zap
+  Zap,
+  Navigation
 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -45,11 +46,10 @@ export const Navbar: React.FC = () => {
           {/* Quick Mode Switcher */}
           <NavLink
             to={isReporterMode ? '/' : '/report'}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 border-2 shadow-sm ${
-              isReporterMode
-                ? 'bg-white text-[#DC0A2D] border-white hover:bg-slate-100'
-                : 'bg-[#FFCB05] text-slate-900 border-[#E5A700] hover:bg-[#FFE066]'
-            }`}
+            className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 border-2 shadow-sm ${isReporterMode
+              ? 'bg-white text-[#DC0A2D] border-white hover:bg-slate-100'
+              : 'bg-[#FFCB05] text-slate-900 border-[#E5A700] hover:bg-[#FFE066]'
+              }`}
           >
             {isReporterMode ? (
               <>
@@ -78,14 +78,11 @@ export const Navbar: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-display font-extrabold text-xl tracking-wider text-white drop-shadow-sm">
-                PS20 COMMAND
-              </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FFCB05] text-slate-900 shadow-sm border border-[#E5A700]">
-                ACTIVE HUD
+                SANJIVANI
               </span>
             </div>
             <p className="text-[11px] font-sans font-medium text-white/80 hidden sm:block">
-              Agentic Disaster Relief & Emergency Logistics Engine
+              Agentic Disaster Relief & Emergency Resource Coordinator
             </p>
           </div>
         </NavLink>
@@ -96,10 +93,9 @@ export const Navbar: React.FC = () => {
             to="/"
             end
             className={({ isActive }) =>
-              `px-3.5 py-1.5 rounded-full text-xs font-display font-bold transition-all flex items-center gap-1.5 border-2 ${
-                isActive
-                  ? 'bg-white text-[#DC0A2D] border-white shadow-md scale-105'
-                  : 'bg-black/15 text-white/90 border-transparent hover:bg-white/20 hover:text-white'
+              `px-3.5 py-1.5 rounded-full text-xs font-display font-bold transition-all flex items-center gap-1.5 border-2 ${isActive
+                ? 'bg-white text-[#DC0A2D] border-white shadow-md scale-105'
+                : 'bg-black/15 text-white/90 border-transparent hover:bg-white/20 hover:text-white'
               }`
             }
           >
@@ -110,10 +106,9 @@ export const Navbar: React.FC = () => {
           <NavLink
             to="/incidents"
             className={({ isActive }) =>
-              `px-3.5 py-1.5 rounded-full text-xs font-display font-bold transition-all flex items-center gap-1.5 border-2 ${
-                isActive
-                  ? 'bg-white text-[#DC0A2D] border-white shadow-md scale-105'
-                  : 'bg-black/15 text-white/90 border-transparent hover:bg-white/20 hover:text-white'
+              `px-3.5 py-1.5 rounded-full text-xs font-display font-bold transition-all flex items-center gap-1.5 border-2 ${isActive
+                ? 'bg-white text-[#DC0A2D] border-white shadow-md scale-105'
+                : 'bg-black/15 text-white/90 border-transparent hover:bg-white/20 hover:text-white'
               }`
             }
           >
@@ -124,10 +119,9 @@ export const Navbar: React.FC = () => {
           <NavLink
             to="/resources"
             className={({ isActive }) =>
-              `px-3.5 py-1.5 rounded-full text-xs font-display font-bold transition-all flex items-center gap-1.5 border-2 ${
-                isActive
-                  ? 'bg-white text-[#DC0A2D] border-white shadow-md scale-105'
-                  : 'bg-black/15 text-white/90 border-transparent hover:bg-white/20 hover:text-white'
+              `px-3.5 py-1.5 rounded-full text-xs font-display font-bold transition-all flex items-center gap-1.5 border-2 ${isActive
+                ? 'bg-white text-[#DC0A2D] border-white shadow-md scale-105'
+                : 'bg-black/15 text-white/90 border-transparent hover:bg-white/20 hover:text-white'
               }`
             }
           >
@@ -138,10 +132,9 @@ export const Navbar: React.FC = () => {
           <NavLink
             to="/shelters"
             className={({ isActive }) =>
-              `px-3.5 py-1.5 rounded-full text-xs font-display font-bold transition-all flex items-center gap-1.5 border-2 ${
-                isActive
-                  ? 'bg-white text-[#DC0A2D] border-white shadow-md scale-105'
-                  : 'bg-black/15 text-white/90 border-transparent hover:bg-white/20 hover:text-white'
+              `px-3.5 py-1.5 rounded-full text-xs font-display font-bold transition-all flex items-center gap-1.5 border-2 ${isActive
+                ? 'bg-white text-[#DC0A2D] border-white shadow-md scale-105'
+                : 'bg-black/15 text-white/90 border-transparent hover:bg-white/20 hover:text-white'
               }`
             }
           >
@@ -150,12 +143,24 @@ export const Navbar: React.FC = () => {
           </NavLink>
 
           <NavLink
+            to="/safe-route"
+            className={({ isActive }) =>
+              `px-3.5 py-1.5 rounded-full text-xs font-display font-bold transition-all flex items-center gap-1.5 border-2 ${isActive
+                ? 'bg-white text-[#DC0A2D] border-white shadow-md scale-105'
+                : 'bg-[#FFCB05] text-slate-900 border-[#E5A700] hover:bg-[#FFE066]'
+              }`
+            }
+          >
+            <Navigation className="w-4 h-4 text-[#DC0A2D]" />
+            <span className="hidden md:inline font-black">SAFE ROUTE</span>
+          </NavLink>
+
+          <NavLink
             to="/analytics"
             className={({ isActive }) =>
-              `px-3.5 py-1.5 rounded-full text-xs font-display font-bold transition-all flex items-center gap-1.5 border-2 ${
-                isActive
-                  ? 'bg-white text-[#DC0A2D] border-white shadow-md scale-105'
-                  : 'bg-black/15 text-white/90 border-transparent hover:bg-white/20 hover:text-white'
+              `px-3.5 py-1.5 rounded-full text-xs font-display font-bold transition-all flex items-center gap-1.5 border-2 ${isActive
+                ? 'bg-white text-[#DC0A2D] border-white shadow-md scale-105'
+                : 'bg-black/15 text-white/90 border-transparent hover:bg-white/20 hover:text-white'
               }`
             }
           >

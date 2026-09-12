@@ -26,12 +26,15 @@ import {
   AlertCircle,
   Loader2,
   MapPin,
+  Minimize2,
+  Maximize2,
 } from 'lucide-react';
 import {
   getRankedResourceRecommendations,
   getFacilityFallbackForIncident,
   calculateHaversineDistance,
 } from '../../utils/aiRecommendationEngine';
+import { useDisasterContext } from '../../context/DisasterContext';
 
 interface SituationMapProps {
   incidents?: Incident[];
@@ -196,6 +199,7 @@ export const SituationMap: React.FC<SituationMapProps> = ({
   const [showIncidents, setShowIncidents] = useState(true);
   const [showShelters, setShowShelters] = useState(true);
   const [showResources, setShowResources] = useState(true);
+  const [isHudMinimized, setIsHudMinimized] = useState(false);
 
   // Real-world Emergency Places (OSM Overpass) State
   const [nearbyPlaces, setNearbyPlaces] = useState<EmergencyPlace[]>([]);
@@ -203,7 +207,33 @@ export const SituationMap: React.FC<SituationMapProps> = ({
   const [nearbyError, setNearbyError] = useState<string | null>(null);
   const [localRadiusMeters, setLocalRadiusMeters] = useState<number>(5000);
 
+  // Selected incident object
+  const selectedIncident = incidents.find((i) => i.id === selectedIncidentId) || incidents[0];
+
   const radiusMeters = radiusMetersProp ?? localRadiusMeters;
+  const { setCommandCenterLocation, setCommandCenterRadiusKm } = useDisasterContext();
+
+  // Sync search radius to global DisasterContext
+  useEffect(() => {
+    setCommandCenterRadiusKm(radiusMeters / 1000);
+  }, [radiusMeters, setCommandCenterRadiusKm]);
+
+  // Sync center location to global DisasterContext
+  useEffect(() => {
+    if (selectedIncident?.location?.lat && selectedIncident?.location?.lng) {
+      setCommandCenterLocation({
+        lat: selectedIncident.location.lat,
+        lng: selectedIncident.location.lng,
+        label: selectedIncident.title || 'Selected Command Centre Incident',
+      });
+    } else {
+      setCommandCenterLocation({
+        lat: MAP_DEFAULT_CENTER.lat,
+        lng: MAP_DEFAULT_CENTER.lng,
+        label: 'Command Centre HQ (Mumbai / Pune Sector)',
+      });
+    }
+  }, [selectedIncident, setCommandCenterLocation]);
 
   const handleRadiusChange = (newVal: number) => {
     setLocalRadiusMeters(newVal);
@@ -225,8 +255,6 @@ export const SituationMap: React.FC<SituationMapProps> = ({
     >
   >({});
 
-  // Selected incident object
-  const selectedIncident = incidents.find((i) => i.id === selectedIncidentId) || incidents[0];
 
   // Filter mobile unit markers strictly inside the selected incident's radius
   const filteredResourcesInRadius = useMemo(() => {
@@ -550,149 +578,167 @@ export const SituationMap: React.FC<SituationMapProps> = ({
     <div className="w-full relative border-2 border-slate-200 rounded-2xl overflow-hidden shadow-sm" style={{ height }}>
 
       {/* Dynamic Pokémon Map HUD Overlay */}
-      <div className="absolute top-3 right-3 z-[1000] bg-white/95 backdrop-blur-md border-2 border-slate-200 rounded-2xl p-3 shadow-xl font-sans text-xs text-slate-800 space-y-2.5 max-w-[290px]">
-        <div className="flex items-center justify-between border-b-2 border-slate-100 pb-2">
-          <span className="font-display font-extrabold text-slate-900 flex items-center gap-1.5 text-xs">
-            <Activity className="w-4 h-4 text-blue-600 animate-pulse" />
-            TELEMETRY RADAR
-          </span>
-          <span className="text-[10px] font-display font-extrabold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full uppercase">
-            LIVE HUD
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 text-[10px]">
-          <div className="p-2 bg-red-50 border-2 border-red-200 rounded-xl">
-            <div className="text-red-700 font-display font-extrabold">CRITICAL</div>
-            <div className="text-base font-display font-black text-red-600">{totalCriticalIncidents}</div>
-          </div>
-          <div className="p-2 bg-amber-50 border-2 border-amber-200 rounded-xl">
-            <div className="text-amber-800 font-display font-extrabold">STRANDED</div>
-            <div className="text-base font-display font-black text-amber-600">{totalStranded}</div>
-          </div>
-          <div className="p-2 bg-blue-50 border-2 border-blue-200 rounded-xl">
-            <div className="text-blue-700 font-display font-extrabold">DEPLOYED ({radiusMeters / 1000}km)</div>
-            <div className="text-base font-display font-black text-blue-600">
-              {activeInRadiusResourcesCount}/{filteredResourcesInRadius.length}
-            </div>
-          </div>
-          <div className="p-2 bg-emerald-50 border-2 border-emerald-200 rounded-xl">
-            <div className="text-emerald-700 font-display font-extrabold">SHELTERS ({radiusMeters / 1000}km)</div>
-            <div className="text-base font-display font-black text-emerald-600">{filteredSheltersInRadius.length}</div>
-          </div>
-        </div>
-
-        {/* Dynamic Layer Visibility Toggles */}
-        <div className="pt-2 border-t-2 border-slate-100 flex items-center justify-between text-[10px] font-display font-bold">
-          <button
-            onClick={() => setShowIncidents(!showIncidents)}
-            className={`px-2 py-1 rounded-full border-2 transition-all flex items-center gap-1 shadow-xs ${showIncidents
-              ? 'bg-red-500 text-white border-red-600 shadow-sm'
-              : 'bg-slate-100 text-slate-400 border-slate-200'
-              }`}
-          >
-            <AlertTriangle className="w-3 h-3" />
-            Incidents
-          </button>
-          <button
-            onClick={() => setShowShelters(!showShelters)}
-            className={`px-2 py-1 rounded-full border-2 transition-all flex items-center gap-1 shadow-xs ${showShelters
-              ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
-              : 'bg-slate-100 text-slate-400 border-slate-200'
-              }`}
-          >
-            <Home className="w-3 h-3" />
-            Shelters
-          </button>
-          <button
-            onClick={() => setShowResources(!showResources)}
-            className={`px-2 py-1 rounded-full border-2 transition-all flex items-center gap-1 shadow-xs ${showResources
-              ? 'bg-blue-500 text-white border-blue-600 shadow-sm'
-              : 'bg-slate-100 text-slate-400 border-slate-200'
-              }`}
-          >
-            <Truck className="w-3 h-3" />
-            Units
-          </button>
-        </div>
-
-        {/* Real-World Emergency Support POIs Header & Radius Controls */}
-        <div className="pt-2 border-t-2 border-slate-100 space-y-2">
-          <div className="flex items-center justify-between font-display">
-            <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1">
-              <span>SUPPORT HUBS (OSM)</span>
-              {isFetchingNearby && <Loader2 className="w-3 h-3 animate-spin text-blue-600" />}
+      {isHudMinimized ? (
+        <button
+          onClick={() => setIsHudMinimized(false)}
+          className="absolute top-3 right-3 z-[1000] bg-white/95 backdrop-blur-md border-2 border-slate-200 rounded-full px-3.5 py-2 shadow-xl font-display font-extrabold text-xs text-slate-900 flex items-center gap-2 hover:bg-slate-50 hover:border-slate-300 transition-all active:scale-95 cursor-pointer"
+          title="Expand Telemetry Radar HUD"
+        >
+          <Activity className="w-4 h-4 text-blue-600 animate-pulse" />
+          <span>TELEMETRY RADAR</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <Maximize2 className="w-3.5 h-3.5 text-slate-500 ml-1" />
+        </button>
+      ) : (
+        <div className="absolute top-3 right-3 z-[1000] bg-white/95 backdrop-blur-md border-2 border-slate-200 rounded-2xl p-3 shadow-xl font-sans text-xs text-slate-800 space-y-2.5 max-w-[290px]">
+          <div className="flex items-center justify-between border-b-2 border-slate-100 pb-2">
+            <span className="font-display font-extrabold text-slate-900 flex items-center gap-1.5 text-xs">
+              <Activity className="w-4 h-4 text-blue-600 animate-pulse" />
+              TELEMETRY RADAR
             </span>
-            <select
-              value={radiusMeters}
-              onChange={(e) => handleRadiusChange(parseInt(e.target.value))}
-              className="bg-white text-blue-700 border-2 border-blue-200 text-xs font-display font-bold rounded-lg px-2 py-0.5 outline-none cursor-pointer shadow-xs"
+            <button
+              onClick={() => setIsHudMinimized(true)}
+              className="p-1 px-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all flex items-center gap-1 text-[10px] font-display font-bold cursor-pointer border border-slate-200 shadow-xs"
+              title="Minimize Telemetry Radar HUD"
             >
-              <option value={1000}>1 km</option>
-              <option value={2000}>2 km</option>
-              <option value={3000}>3 km</option>
-              <option value={5000}>5 km (Default)</option>
-              <option value={10000}>10 km</option>
-              <option value={15000}>15 km</option>
-            </select>
+              <Minimize2 className="w-3.5 h-3.5 text-slate-600" />
+              <span className="text-[10px]">Minimize</span>
+            </button>
           </div>
 
-          {nearbyError && (
-            <div className="text-[10px] text-amber-800 bg-amber-50 border-2 border-amber-200 p-1.5 rounded-xl flex items-center gap-1 font-medium">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
-              <span>{nearbyError}</span>
+          <div className="grid grid-cols-2 gap-2 text-[10px]">
+            <div className="p-2 bg-red-50 border-2 border-red-200 rounded-xl">
+              <div className="text-red-700 font-display font-extrabold">CRITICAL</div>
+              <div className="text-base font-display font-black text-red-600">{totalCriticalIncidents}</div>
             </div>
-          )}
+            <div className="p-2 bg-amber-50 border-2 border-amber-200 rounded-xl">
+              <div className="text-amber-800 font-display font-extrabold">STRANDED</div>
+              <div className="text-base font-display font-black text-amber-600">{totalStranded}</div>
+            </div>
+            <div className="p-2 bg-blue-50 border-2 border-blue-200 rounded-xl">
+              <div className="text-blue-700 font-display font-extrabold">DEPLOYED ({radiusMeters / 1000}km)</div>
+              <div className="text-base font-display font-black text-blue-600">
+                {activeInRadiusResourcesCount}/{filteredResourcesInRadius.length}
+              </div>
+            </div>
+            <div className="p-2 bg-emerald-50 border-2 border-emerald-200 rounded-xl">
+              <div className="text-emerald-700 font-display font-extrabold">SHELTERS ({radiusMeters / 1000}km)</div>
+              <div className="text-base font-display font-black text-emerald-600">{filteredSheltersInRadius.length}</div>
+            </div>
+          </div>
 
-          {/* Category Filter Checkboxes */}
-          <div className="grid grid-cols-2 gap-1.5 text-[10px] font-display font-bold">
+          {/* Dynamic Layer Visibility Toggles */}
+          <div className="pt-2 border-t-2 border-slate-100 flex items-center justify-between text-[10px] font-display font-bold">
             <button
-              onClick={() => setShowHospitals(!showHospitals)}
-              className={`p-1.5 rounded-xl border-2 text-left flex items-center gap-1.5 transition-all shadow-xs ${showHospitals ? 'bg-rose-50 text-rose-800 border-rose-300' : 'bg-slate-100 text-slate-400 border-slate-200'
+              onClick={() => setShowIncidents(!showIncidents)}
+              className={`px-2 py-1 rounded-full border-2 transition-all flex items-center gap-1 shadow-xs ${showIncidents
+                ? 'bg-red-500 text-white border-red-600 shadow-sm'
+                : 'bg-slate-100 text-slate-400 border-slate-200'
                 }`}
             >
-              <span>🏥</span>
-              <span>Hospitals</span>
+              <AlertTriangle className="w-3 h-3" />
+              Incidents
             </button>
-
             <button
-              onClick={() => setShowFireStations(!showFireStations)}
-              className={`p-1.5 rounded-xl border-2 text-left flex items-center gap-1.5 transition-all shadow-xs ${showFireStations ? 'bg-orange-50 text-orange-800 border-orange-300' : 'bg-slate-100 text-slate-400 border-slate-200'
+              onClick={() => setShowShelters(!showShelters)}
+              className={`px-2 py-1 rounded-full border-2 transition-all flex items-center gap-1 shadow-xs ${showShelters
+                ? 'bg-emerald-500 text-white border-emerald-600 shadow-sm'
+                : 'bg-slate-100 text-slate-400 border-slate-200'
                 }`}
             >
-              <span>🚒</span>
-              <span>Fire</span>
+              <Home className="w-3 h-3" />
+              Shelters
             </button>
-
             <button
-              onClick={() => setShowPolice(!showPolice)}
-              className={`p-1.5 rounded-xl border-2 text-left flex items-center gap-1.5 transition-all shadow-xs ${showPolice ? 'bg-blue-50 text-blue-800 border-blue-300' : 'bg-slate-100 text-slate-400 border-slate-200'
+              onClick={() => setShowResources(!showResources)}
+              className={`px-2 py-1 rounded-full border-2 transition-all flex items-center gap-1 shadow-xs ${showResources
+                ? 'bg-blue-500 text-white border-blue-600 shadow-sm'
+                : 'bg-slate-100 text-slate-400 border-slate-200'
                 }`}
             >
-              <span>👮</span>
-              <span>Police</span>
+              <Truck className="w-3 h-3" />
+              Units
             </button>
+          </div>
 
-            <button
-              onClick={() => setShowNgos(!showNgos)}
-              className={`p-1.5 rounded-xl border-2 text-left flex items-center gap-1.5 transition-all shadow-xs ${showNgos ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-400 border-slate-200'
-                }`}
-            >
-              <span>🟢</span>
-              <span>NGOs</span>
-            </button>
+          {/* Real-World Emergency Support POIs Header & Radius Controls */}
+          <div className="pt-2 border-t-2 border-slate-100 space-y-2">
+            <div className="flex items-center justify-between font-display">
+              <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1">
+                <span>SUPPORT HUBS (OSM)</span>
+                {isFetchingNearby && <Loader2 className="w-3 h-3 animate-spin text-blue-600" />}
+              </span>
+              <select
+                value={radiusMeters}
+                onChange={(e) => handleRadiusChange(parseInt(e.target.value))}
+                className="bg-white text-blue-700 border-2 border-blue-200 text-xs font-display font-bold rounded-lg px-2 py-0.5 outline-none cursor-pointer shadow-xs"
+              >
+                <option value={1000}>1 km</option>
+                <option value={2000}>2 km</option>
+                <option value={3000}>3 km</option>
+                <option value={5000}>5 km (Default)</option>
+                <option value={10000}>10 km</option>
+                <option value={15000}>15 km</option>
+              </select>
+            </div>
 
-            <button
-              onClick={() => setShowRescue(!showRescue)}
-              className={`col-span-2 p-1.5 rounded-xl border-2 text-left flex items-center gap-1.5 transition-all shadow-xs ${showRescue ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-slate-100 text-slate-400 border-slate-200'
-                }`}
-            >
-              <span>🛟</span>
-              <span>Rescue Squads</span>
-            </button>
+            {nearbyError && (
+              <div className="text-[10px] text-amber-800 bg-amber-50 border-2 border-amber-200 p-1.5 rounded-xl flex items-center gap-1 font-medium">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+                <span>{nearbyError}</span>
+              </div>
+            )}
+
+            {/* Category Filter Checkboxes */}
+            <div className="grid grid-cols-2 gap-1.5 text-[10px] font-display font-bold">
+              <button
+                onClick={() => setShowHospitals(!showHospitals)}
+                className={`p-1.5 rounded-xl border-2 text-left flex items-center gap-1.5 transition-all shadow-xs ${showHospitals ? 'bg-rose-50 text-rose-800 border-rose-300' : 'bg-slate-100 text-slate-400 border-slate-200'
+                  }`}
+              >
+                <span>🏥</span>
+                <span>Hospitals</span>
+              </button>
+
+              <button
+                onClick={() => setShowFireStations(!showFireStations)}
+                className={`p-1.5 rounded-xl border-2 text-left flex items-center gap-1.5 transition-all shadow-xs ${showFireStations ? 'bg-orange-50 text-orange-800 border-orange-300' : 'bg-slate-100 text-slate-400 border-slate-200'
+                  }`}
+              >
+                <span>🚒</span>
+                <span>Fire</span>
+              </button>
+
+              <button
+                onClick={() => setShowPolice(!showPolice)}
+                className={`p-1.5 rounded-xl border-2 text-left flex items-center gap-1.5 transition-all shadow-xs ${showPolice ? 'bg-blue-50 text-blue-800 border-blue-300' : 'bg-slate-100 text-slate-400 border-slate-200'
+                  }`}
+              >
+                <span>👮</span>
+                <span>Police</span>
+              </button>
+
+              <button
+                onClick={() => setShowNgos(!showNgos)}
+                className={`p-1.5 rounded-xl border-2 text-left flex items-center gap-1.5 transition-all shadow-xs ${showNgos ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-400 border-slate-200'
+                  }`}
+              >
+                <span>🟢</span>
+                <span>NGOs</span>
+              </button>
+
+              <button
+                onClick={() => setShowRescue(!showRescue)}
+                className={`col-span-2 p-1.5 rounded-xl border-2 text-left flex items-center gap-1.5 transition-all shadow-xs ${showRescue ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-slate-100 text-slate-400 border-slate-200'
+                  }`}
+              >
+                <span>🛟</span>
+                <span>Rescue Squads</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Dynamic Route Trajectory HUD Banner */}
       {activeFacilityDetails && selectedIncident ? (
@@ -776,8 +822,8 @@ export const SituationMap: React.FC<SituationMapProps> = ({
           <Polyline
             positions={activeRoutePositions}
             pathOptions={{
-              color: '#EF4444',
-              weight: 4,
+              color: '#2563EB',
+              weight: 5,
               dashArray: '8, 8',
               opacity: 0.9,
             }}
@@ -903,12 +949,15 @@ export const SituationMap: React.FC<SituationMapProps> = ({
               );
             })}
 
-        {/* Dynamic Safe Shelter Markers (Strictly In-Radius Only) */}
-        {showShelters &&
+        {/* Dynamic Safe Shelter Markers (5km Radius Spots around Selected Incident) */}
+        {(showShelters || !!selectedIncidentId) &&
           filteredSheltersInRadius.map((s) => {
             const occ = s.occupied ?? s.currentOccupancy ?? 0;
             const cap = s.capacity || 100;
             const pct = Math.min(100, Math.round((occ / cap) * 100));
+            const distFromIncident = selectedIncident?.location?.lat
+              ? calculateHaversineDistance(s.location.lat, s.location.lng, selectedIncident.location.lat, selectedIncident.location.lng)
+              : null;
 
             return (
               <Marker
@@ -917,16 +966,24 @@ export const SituationMap: React.FC<SituationMapProps> = ({
                 icon={createShelterIcon(occ, cap)}
               >
                 <Popup>
-                  <div className="p-3.5 font-sans text-xs bg-white text-slate-900 rounded-xl space-y-2.5 min-w-[220px]">
+                  <div className="p-3.5 font-sans text-xs bg-white text-slate-900 rounded-xl space-y-2.5 min-w-[240px]">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-display font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase">
-                        Safe Shelter
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-display font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 uppercase flex items-center gap-1">
+                        <Home className="w-3 h-3 text-emerald-600" />
+                        5km Safe Haven Spot
                       </span>
                       <span className="font-mono text-[10px] text-slate-400 font-bold">{s.id}</span>
                     </div>
 
                     <h4 className="font-display font-extrabold text-sm text-slate-900 mt-1">{s.name}</h4>
                     <p className="text-slate-500 text-[11px] font-medium">{s.location.address}</p>
+
+                    {distFromIncident !== null && (
+                      <div className="text-[11px] font-display font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg flex items-center justify-between">
+                        <span>Distance to Incident:</span>
+                        <span className="font-extrabold text-blue-800">{distFromIncident.toFixed(2)} km</span>
+                      </div>
+                    )}
 
                     <div className="space-y-1.5 pt-1">
                       <div className="flex justify-between text-[10px] font-mono">

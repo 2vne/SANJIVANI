@@ -22,11 +22,17 @@ interface DisasterContextType {
   alerts: SystemAlert[];
   broadcasts: BroadcastMessage[];
   auditEvents: AuditEvent[];
-  
+
+  commandCenterLocation: { lat: number; lng: number; label: string };
+  commandCenterRadiusKm: number;
+  setCommandCenterLocation: (loc: { lat: number; lng: number; label?: string }) => void;
+  setCommandCenterRadiusKm: (radiusKm: number) => void;
+
   createIncident: (incident: Omit<Incident, 'id' | 'reportedAt'>) => Incident;
   updateIncident: (id: string, updates: Partial<Incident>) => void;
   updateIncidentStatus: (id: string, status: IncidentStatus) => void;
   dispatchResource: (incidentId: string, resourceId: string, etaMinutes?: number, notes?: string) => void;
+  updateResourceStatus: (id: string, status: ResourceUnit['status'], assignedIncidentId?: string) => void;
   reallocateResource: (oldResourceId: string, newResourceId: string, incidentId: string, etaMinutes?: number) => void;
   updateETA: (resourceId: string, etaMinutes: number) => void;
   updateShelter: (id: string, updates: Partial<Shelter> | ((prev: Shelter) => Shelter)) => void;
@@ -41,6 +47,25 @@ interface DisasterContextType {
 const DisasterContext = createContext<DisasterContextType | undefined>(undefined);
 
 export const DisasterProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [commandCenterLocation, setCommandCenterLocationState] = useState<{ lat: number; lng: number; label: string }>({
+    lat: 19.0760,
+    lng: 72.8777,
+    label: 'Command Centre Sector HQ (Mumbai/Pune)',
+  });
+  const [commandCenterRadiusKm, setCommandCenterRadiusKmState] = useState<number>(5);
+
+  const setCommandCenterLocation = (loc: { lat: number; lng: number; label?: string }) => {
+    setCommandCenterLocationState({
+      lat: loc.lat,
+      lng: loc.lng,
+      label: loc.label || `Sector (${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)})`,
+    });
+  };
+
+  const setCommandCenterRadiusKm = (radiusKm: number) => {
+    setCommandCenterRadiusKmState(radiusKm);
+  };
+
   const [state, setState] = useState<DisasterState>(() => ({
     incidents: [],
     resources: [],
@@ -320,10 +345,10 @@ export const DisasterProvider: React.FC<{ children: ReactNode }> = ({ children }
 
       const updatedResources = isRemoving
         ? prev.resources.map((r) =>
-            r.assignedIncidentId === id
-              ? { ...r, status: 'AVAILABLE' as const, assignedIncidentId: undefined, etaMinutes: undefined }
-              : r
-          )
+          r.assignedIncidentId === id
+            ? { ...r, status: 'AVAILABLE' as const, assignedIncidentId: undefined, etaMinutes: undefined }
+            : r
+        )
         : prev.resources;
 
       const updatedAudit = logAudit(
@@ -354,11 +379,11 @@ export const DisasterProvider: React.FC<{ children: ReactNode }> = ({ children }
       const updatedResources = prev.resources.map((res) =>
         res.id === resourceId
           ? {
-              ...res,
-              status: 'EN_ROUTE' as const,
-              assignedIncidentId: incidentId,
-              etaMinutes,
-            }
+            ...res,
+            status: 'EN_ROUTE' as const,
+            assignedIncidentId: incidentId,
+            etaMinutes,
+          }
           : res
       );
 
@@ -405,6 +430,65 @@ export const DisasterProvider: React.FC<{ children: ReactNode }> = ({ children }
         auditEvents: updatedAudit,
       };
     });
+  };
+
+  const updateResourceStatus = (
+    id: string,
+    status: ResourceUnit['status'],
+    assignedIncidentId?: string
+  ) => {
+    setState((prev) => {
+      const targetIncidentId = assignedIncidentId || prev.incidents[0]?.id || 'INC-101';
+
+      const updatedResources = prev.resources.map((res) => {
+        if (res.id === id) {
+          return {
+            ...res,
+            status,
+            assignedIncidentId: status === 'AVAILABLE' ? undefined : (res.assignedIncidentId || targetIncidentId),
+            etaMinutes: status === 'AVAILABLE' ? undefined : (res.etaMinutes || 12),
+          };
+        }
+        return res;
+      });
+
+      let updatedIncidents = prev.incidents;
+      if (status === 'EN_ROUTE' && targetIncidentId) {
+        updatedIncidents = prev.incidents.map((inc) => {
+          if (inc.id === targetIncidentId) {
+            const currentUnits = inc.dispatchedUnitIds || [];
+            const dispatchedUnitIds = currentUnits.includes(id) ? currentUnits : [...currentUnits, id];
+            return {
+              ...inc,
+              dispatchedUnitIds,
+              status: inc.status === 'REPORTED' ? ('DISPATCHED' as const) : inc.status,
+            };
+          }
+          return inc;
+        });
+      }
+
+      const updatedAudit = logAudit(
+        prev,
+        'RESOURCE_STATUS_CHANGED',
+        'RESOURCE',
+        id,
+        `Updated resource ${id} status to ${status}${status !== 'AVAILABLE' ? ` (Assigned to ${targetIncidentId})` : ''}`
+      );
+
+      return {
+        ...prev,
+        resources: updatedResources,
+        incidents: updatedIncidents,
+        auditEvents: updatedAudit,
+      };
+    });
+
+    // Send backend REST update if dispatched
+    if (status === 'EN_ROUTE') {
+      const targetInc = state.incidents[0]?.id || 'INC-101';
+      apiService.dispatchResource(assignedIncidentId || targetInc, id);
+    }
   };
 
   const reallocateResource = (
@@ -638,12 +722,12 @@ export const DisasterProvider: React.FC<{ children: ReactNode }> = ({ children }
         resources: res.resources.length > 0
           ? res.resources
           : prev.resources.map((r) => ({
-              ...r,
-              status: 'AVAILABLE' as const,
-              currentAssignment: undefined,
-              destination: undefined,
-              eta: undefined,
-            })),
+            ...r,
+            status: 'AVAILABLE' as const,
+            currentAssignment: undefined,
+            destination: undefined,
+            eta: undefined,
+          })),
         allocations: [],
       }));
     } else {
@@ -685,10 +769,16 @@ export const DisasterProvider: React.FC<{ children: ReactNode }> = ({ children }
         broadcasts: state.broadcasts,
         auditEvents: state.auditEvents,
 
+        commandCenterLocation,
+        commandCenterRadiusKm,
+        setCommandCenterLocation,
+        setCommandCenterRadiusKm,
+
         createIncident,
         updateIncident,
         updateIncidentStatus,
         dispatchResource,
+        updateResourceStatus,
         reallocateResource,
         updateETA,
         updateShelter,
