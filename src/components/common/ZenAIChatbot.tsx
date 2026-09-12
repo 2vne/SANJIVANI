@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, X, Send, Sparkles, Loader2 } from 'lucide-react';
+import { useDisasterContext } from '../../context/DisasterContext';
 
 interface ChatMessage {
     id: string;
@@ -9,6 +10,7 @@ interface ChatMessage {
 }
 
 export const ZenAIChatbot: React.FC = () => {
+    const { incidents, resources, shelters } = useDisasterContext();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<ChatMessage[]>([
         {
@@ -24,8 +26,10 @@ export const ZenAIChatbot: React.FC = () => {
 
     // Auto-scroll to bottom of chat
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, isTyping]);
+        if (isOpen) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages, isTyping, isOpen]);
 
     const handleSend = () => {
         if (!input.trim()) return;
@@ -33,7 +37,7 @@ export const ZenAIChatbot: React.FC = () => {
         const userMsg: ChatMessage = {
             id: Date.now().toString(),
             sender: 'user',
-            text: input,
+            text: input.trim(),
             timestamp: new Date()
         };
 
@@ -41,19 +45,27 @@ export const ZenAIChatbot: React.FC = () => {
         setInput('');
         setIsTyping(true);
 
-        // Fast simulated AI response
+        // Fast simulated AI response using real dashboard context
         setTimeout(() => {
             const lowerInput = userMsg.text.toLowerCase();
             let botResponse = "I've logged your request. Command Center has been notified.";
 
-            if (lowerInput.includes('status') || lowerInput.includes('update')) {
-                botResponse = "All systems operational. Currently tracking global active incidents and routing resources.";
+            const activeIncidents = incidents.filter(i => i.status !== 'RESOLVED' && i.status !== 'CANCELLED').length;
+            const criticalIncidents = incidents.filter(i => i.severity === 'CRITICAL').length;
+            const availableResources = resources.filter(r => r.status === 'AVAILABLE').length;
+            const totalShelters = shelters.length;
+
+            if (lowerInput.includes('status') || lowerInput.includes('update') || lowerInput.includes('dashboard')) {
+                botResponse = `COMMAND CENTER UPDATE: There are currently ${activeIncidents} active disaster incidents (${criticalIncidents} CRITICAL). We have ${availableResources} emergency response units on standby ready for dispatch.`;
             } else if (lowerInput.includes('hello') || lowerInput.includes('hi')) {
                 botResponse = "Hello! I am Zen AI, your emergency coordinator assistant. How can I assist your sector today?";
             } else if (lowerInput.includes('sos') || lowerInput.includes('help')) {
-                botResponse = "🚨 High Priority SOS acknowledged. Routing immediate NDRF resources to nearby coordinates.";
+                botResponse = `🚨 High Priority SOS acknowledged. We have ${availableResources} available units remaining. Routing immediate NDRF resources to your coordinates.`;
             } else if (lowerInput.includes('shelter')) {
-                botResponse = "We are currently monitoring live safe haven capacities. Please check the Shelters network tab for real-time occupancy.";
+                const openShelters = shelters.filter(s => s.status === 'OPEN').length;
+                botResponse = `Shelter Network Status: We are currently monitoring ${totalShelters} live safe havens, of which ${openShelters} are actively OPEN and accepting evacuees. Please check the Shelters network tab for real-time occupancy.`;
+            } else if (lowerInput.includes('resource') || lowerInput.includes('ambulance') || lowerInput.includes('fire')) {
+                botResponse = `We currently have ${resources.length} total registered emergency resources, with ${availableResources} units actively marked as AVAILABLE for instant dispatch.`;
             }
 
             setMessages(prev => [
@@ -66,7 +78,7 @@ export const ZenAIChatbot: React.FC = () => {
                 }
             ]);
             setIsTyping(false);
-        }, 800);
+        }, 600);
     };
 
     return (
@@ -108,8 +120,8 @@ export const ZenAIChatbot: React.FC = () => {
                             >
                                 <div
                                     className={`max-w-[85%] px-4 py-2.5 rounded-2xl text-sm ${msg.sender === 'user'
-                                            ? 'bg-emerald-600 text-white rounded-br-none shadow-sm'
-                                            : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none shadow-sm'
+                                        ? 'bg-emerald-600 text-white rounded-br-none shadow-sm'
+                                        : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none shadow-sm'
                                         }`}
                                 >
                                     {msg.text}
