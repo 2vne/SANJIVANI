@@ -81,12 +81,12 @@ async def trigger_pagerduty(
             )
         body = r.json() if r.content else {}
         if r.status_code == 202:
-            print(f"[PagerDuty] ✅ Incident created | dedup_key: {dedup_key} | HTTP 202")
+            print(f"[PagerDuty] [OK] Incident created | dedup_key: {dedup_key} | HTTP 202")
         else:
-            print(f"[PagerDuty] ❌ Failed | status={r.status_code} | body={r.text}")
+            print(f"[PagerDuty] [FAIL] status={r.status_code} | body={r.text}")
         return {"status": r.status_code, "body": body, "dedup_key": dedup_key}
     except Exception as ex:
-        print(f"[PagerDuty] ❌ Exception: {ex}")
+        print(f"[PagerDuty] [FAIL] Exception: {ex}")
         return {"error": str(ex), "dedup_key": dedup_key}
 
 
@@ -134,16 +134,16 @@ async def send_resend_email(
         body = r.json() if r.content else {}
         if r.status_code == 200:
             email_id = body.get("id", "unknown")
-            print(f"[Resend] ✅ Email sent | id: {email_id} | to: {NOTIFICATION_EMAIL}")
+            print(f"[Resend] [OK] Email sent | id: {email_id} | to: {NOTIFICATION_EMAIL}")
         else:
-            print(f"[Resend] ❌ Failed | status={r.status_code} | body={r.text}")
+            print(f"[Resend] [FAIL] status={r.status_code} | body={r.text}")
             if "1010" in r.text:
-                print(f"[Resend] ℹ️  Error 1010: Free-tier restriction — 'to' must be the Resend account owner's verified email.")
-                print(f"[Resend] ℹ️  Current recipient: {NOTIFICATION_EMAIL}")
-                print(f"[Resend] ℹ️  Fix: Login at resend.com → Settings → find your account email → set as NOTIFICATION_EMAIL in .env")
+                print(f"[Resend] Error 1010: Free-tier restriction — 'to' must be the Resend account owner's verified email.")
+                print(f"[Resend] Current recipient: {NOTIFICATION_EMAIL}")
+                print(f"[Resend] Fix: Login at resend.com -> Settings -> find your account email -> set as NOTIFICATION_EMAIL in .env")
         return {"status": r.status_code, "body": body}
     except Exception as ex:
-        print(f"[Resend] ❌ Exception: {ex}")
+        print(f"[Resend] [FAIL] Exception: {ex}")
         return {"error": str(ex)}
 
 
