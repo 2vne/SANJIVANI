@@ -6,6 +6,7 @@ import { SituationMap } from '../components/map/SituationMap';
 import { IncidentFeed } from '../components/dashboard/IncidentFeed';
 import { ResourceSummary } from '../components/dashboard/ResourceSummary';
 import { ShelterOverview } from '../components/dashboard/ShelterOverview';
+import { PipelineBar, PIPELINE_STEPS } from '../components/dashboard/PipelineBar';
 import { calculateHaversineDistance } from '../utils/aiRecommendationEngine';
 
 import {
@@ -49,7 +50,6 @@ export const DashboardPage: React.FC = () => {
   const [targetPlace, setTargetPlace] = useState<EmergencyPlace | undefined>();
   const [nearbyPlaces, setNearbyPlaces] = useState<EmergencyPlace[]>([]);
   const [radiusMeters, setRadiusMeters] = useState<number>(5000);
-  const [isResetting, setIsResetting] = useState(false);
 
   const radiusKm = radiusMeters / 1000;
 
@@ -152,16 +152,35 @@ export const DashboardPage: React.FC = () => {
   const strandedFlash = useFlash(strandedTotal);
   const deployedFlash = useFlash(activeInRadiusCount);
   const shelterFlash = useFlash(shelterPct);
+  const [isResetting, setIsResetting] = useState(false);
+  const [pipelineStepIndex, setPipelineStepIndex] = useState<number | null>(null);
 
   const handleResetData = async () => {
     if (isResetting) return;
+    setIsResetting(true);
+    setPipelineStepIndex(0);
+
+    let currentStep = 0;
+    const interval = setInterval(() => {
+      currentStep += 1;
+      if (currentStep < PIPELINE_STEPS.length) {
+        setPipelineStepIndex(currentStep);
+      } else {
+        clearInterval(interval);
+      }
+    }, 350);
+
     try {
-      setIsResetting(true);
       await resetState();
     } catch (err) {
       console.error('Reset mock state error:', err);
     } finally {
-      setIsResetting(false);
+      const totalAnimationDuration = PIPELINE_STEPS.length * 350 + 600;
+      setTimeout(() => {
+        clearInterval(interval);
+        setIsResetting(false);
+        setPipelineStepIndex(null);
+      }, totalAnimationDuration);
     }
   };
 
@@ -249,28 +268,32 @@ export const DashboardPage: React.FC = () => {
 
         {/* Center: Live Situation Map */}
         <div className="lg:col-span-5 h-full flex flex-col gap-2.5">
-          {/* Top Map HUD Status Bar */}
-          <div className="flex items-center justify-between bg-white border-2 border-slate-200 p-3 rounded-2xl shadow-sm text-xs font-display">
-            <div className="flex items-center gap-2.5">
-              <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
-              <span className="font-extrabold text-slate-800 tracking-wide flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-[#FFCB05] fill-[#FFCB05]" />
-                LIVE RADAR & TACTICAL SATELLITE HUD
-              </span>
+          {/* Top Map HUD Status Bar or Pipeline Bar */}
+          {pipelineStepIndex !== null ? (
+            <PipelineBar currentStepIndex={pipelineStepIndex} />
+          ) : (
+            <div className="flex items-center justify-between bg-white border-2 border-slate-200 p-3 rounded-2xl shadow-sm text-xs font-display">
+              <div className="flex items-center gap-2.5">
+                <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
+                <span className="font-extrabold text-slate-800 tracking-wide flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-[#FFCB05] fill-[#FFCB05]" />
+                  LIVE RADAR & TACTICAL SATELLITE HUD
+                </span>
+              </div>
+              <button
+                onClick={handleResetData}
+                disabled={isResetting}
+                className="px-3 py-1.5 bg-[#FFCB05] hover:bg-[#FFE066] text-slate-900 font-extrabold border-2 border-[#E5A700] rounded-xl text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all disabled:opacity-60"
+              >
+                {isResetting ? (
+                  <Loader2 className="w-3.5 h-3.5 text-slate-900 animate-spin" />
+                ) : (
+                  <RefreshCcw className="w-3.5 h-3.5" />
+                )}
+                <span>{isResetting ? 'GENERATING STATE...' : 'RESET MOCK STATE'}</span>
+              </button>
             </div>
-            <button
-              onClick={handleResetData}
-              disabled={isResetting}
-              className="px-3 py-1.5 bg-[#FFCB05] hover:bg-[#FFE066] text-slate-900 font-extrabold border-2 border-[#E5A700] rounded-xl text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all disabled:opacity-60"
-            >
-              {isResetting ? (
-                <Loader2 className="w-3.5 h-3.5 text-slate-900 animate-spin" />
-              ) : (
-                <RefreshCcw className="w-3.5 h-3.5" />
-              )}
-              <span>{isResetting ? 'GENERATING STATE...' : 'RESET MOCK STATE'}</span>
-            </button>
-          </div>
+          )}
 
           <div className="flex-1 min-h-0 rounded-2xl overflow-hidden border-2 border-slate-200 shadow-sm bg-white p-1">
             <SituationMap
