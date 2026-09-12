@@ -53,14 +53,21 @@ export const DashboardPage: React.FC = () => {
 
   const radiusKm = radiusMeters / 1000;
 
+  const activeIncident = useMemo(
+    () => incidents.find((i) => i.id === selectedIncidentId) || incidents[0],
+    [incidents, selectedIncidentId]
+  );
+
+  const activeLat = activeIncident?.location?.lat;
+  const activeLng = activeIncident?.location?.lng;
+
   useEffect(() => {
     setNearbyPlaces([]);
   }, [selectedIncidentId]);
 
   useEffect(() => {
-    const selInc = incidents.find((i) => i.id === selectedIncidentId) || incidents[0];
-    if (selInc?.location?.lat && selInc?.location?.lng) {
-      getNearbyEmergencyPlaces(selInc.location.lat, selInc.location.lng, radiusMeters).then((res) => {
+    if (activeLat && activeLng) {
+      getNearbyEmergencyPlaces(activeLat, activeLng, radiusMeters).then((res) => {
         if (res.success && Array.isArray(res.places)) {
           setNearbyPlaces((prev) => {
             const nextMap: Record<string, EmergencyPlace> = {};
@@ -75,13 +82,7 @@ export const DashboardPage: React.FC = () => {
         }
       });
     }
-  }, [selectedIncidentId, incidents, radiusMeters, getNearbyEmergencyPlaces]);
-
-  // Active incident selected
-  const activeIncident = useMemo(
-    () => incidents.find((i) => i.id === selectedIncidentId) || incidents[0],
-    [incidents, selectedIncidentId]
-  );
+  }, [selectedIncidentId, radiusMeters, activeLat, activeLng, getNearbyEmergencyPlaces]);
 
   // Filter mobile units strictly inside selected incident's radius
   const inRadiusUnits = useMemo(() => {

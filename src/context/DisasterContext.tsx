@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import {
   Incident,
   ResourceUnit,
@@ -66,17 +66,11 @@ export const DisasterProvider: React.FC<{ children: ReactNode }> = ({ children }
     setCommandCenterRadiusKmState(radiusKm);
   };
 
-  const [state, setState] = useState<DisasterState>(() => ({
-    incidents: [],
-    resources: [],
-    shelters: [],
-    allocations: [],
-    alerts: [],
-    broadcasts: [],
-    auditEvents: [],
-  }));
+  const [state, setState] = useState<DisasterState>(() => {
+    return mockDataService.loadFullState();
+  });
 
-  // Fetch initial operational data from REST API on mount
+  // Fetch initial operational data from REST API on mount and merge with persistent local state
   useEffect(() => {
     const syncFromBackend = async () => {
       try {
@@ -90,14 +84,40 @@ export const DisasterProvider: React.FC<{ children: ReactNode }> = ({ children }
           apiService.fetchBroadcasts(),
         ]);
 
-        setState({
-          incidents,
-          resources,
-          shelters,
-          allocations,
-          alerts,
-          auditEvents,
-          broadcasts,
+        setState((prev) => {
+          const localIncMap = new Map(prev.incidents.map((i) => [i.id, i]));
+          incidents.forEach((inc) => {
+            if (!localIncMap.has(inc.id)) {
+              localIncMap.set(inc.id, inc);
+            }
+          });
+          const mergedIncidents = Array.from(localIncMap.values());
+
+          const localResMap = new Map(prev.resources.map((r) => [r.id, r]));
+          resources.forEach((res) => {
+            if (!localResMap.has(res.id)) {
+              localResMap.set(res.id, res);
+            }
+          });
+          const mergedResources = Array.from(localResMap.values());
+
+          const localShelterMap = new Map(prev.shelters.map((s) => [s.id, s]));
+          shelters.forEach((shl) => {
+            if (!localShelterMap.has(shl.id)) {
+              localShelterMap.set(shl.id, shl);
+            }
+          });
+          const mergedShelters = Array.from(localShelterMap.values());
+
+          return {
+            incidents: mergedIncidents.length > 0 ? mergedIncidents : prev.incidents,
+            resources: mergedResources.length > 0 ? mergedResources : prev.resources,
+            shelters: mergedShelters.length > 0 ? mergedShelters : prev.shelters,
+            allocations: allocations.length > 0 ? allocations : prev.allocations,
+            alerts: alerts.length > 0 ? alerts : prev.alerts,
+            auditEvents: auditEvents.length > 0 ? auditEvents : prev.auditEvents,
+            broadcasts: broadcasts.length > 0 ? broadcasts : prev.broadcasts,
+          };
         });
       } catch (e) {
         console.warn('Backend REST sync error', e);
@@ -736,7 +756,7 @@ export const DisasterProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
 
-  const registerDynamicNearbyResources = (places: EmergencyPlace[]) => {
+  const registerDynamicNearbyResources = useCallback((places: EmergencyPlace[]) => {
     if (!places || places.length === 0) return;
     const newUnits = convertEmergencyPlacesToResourceUnits(places);
     setState((prev) => {
@@ -748,15 +768,15 @@ export const DisasterProvider: React.FC<{ children: ReactNode }> = ({ children }
         resources: [...prev.resources, ...toAdd],
       };
     });
-  };
+  }, []);
 
-  const getNearbyEmergencyPlaces = async (lat: number, lon: number, radius?: number) => {
+  const getNearbyEmergencyPlaces = useCallback(async (lat: number, lon: number, radius?: number) => {
     const result = await apiService.fetchNearbyEmergencyPlaces(lat, lon, radius);
     if (result.success && Array.isArray(result.places) && result.places.length > 0) {
       registerDynamicNearbyResources(result.places);
     }
     return result;
-  };
+  }, [registerDynamicNearbyResources]);
 
   return (
     <DisasterContext.Provider
