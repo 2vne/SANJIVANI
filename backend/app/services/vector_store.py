@@ -1,4 +1,9 @@
-import faiss
+try:
+    import faiss
+    HAS_FAISS = True
+except Exception:
+    HAS_FAISS = False
+
 import numpy as np
 import json
 import asyncio
@@ -14,8 +19,11 @@ _openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY and "your
 class FAISSVectorStore:
     def __init__(self, dimension: int = 1536):
         self.dimension = dimension
-        self.index = faiss.IndexFlatL2(self.dimension)
-        self.document_map: Dict[int, Dict[str, Any]] = {}  # Maps FAISS integer ID to JSON chunk
+        if HAS_FAISS:
+            self.index = faiss.IndexFlatL2(self.dimension)
+        else:
+            self.vectors: List[np.ndarray] = []
+        self.document_map: Dict[int, Dict[str, Any]] = {}  # Maps integer ID to JSON chunk
         self.current_id = 0
 
     def _get_heuristic_vector(self, text: str) -> np.ndarray:
@@ -49,7 +57,10 @@ class FAISSVectorStore:
 
     async def ingest_document(self, metadata: Dict[str, Any], text_content: str):
         vec = await self.get_embedding(text_content)
-        self.index.add(vec)
+        if HAS_FAISS:
+            self.index.add(vec)
+        else:
+            self.vectors.append(vec.flatten())
         self.document_map[self.current_id] = metadata
         self.current_id += 1
 
@@ -81,16 +92,26 @@ class FAISSVectorStore:
 
     async def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
         vec = await self.get_embedding(query)
-        # Search the index
-        distances, indices = self.index.search(vec, top_k)
-        
         results = []
-        for dist, idx in zip(distances[0], indices[0]):
-            if idx != -1 and idx in self.document_map:
-                results.append({
-                    "distance": float(dist),
-                    "document": self.document_map[idx]
-                })
+
+        if HAS_FAISS:
+            distances, indices = self.index.search(vec, top_k)
+            for dist, idx in zip(distances[0], indices[0]):
+                if idx != -1 and idx in self.document_map:
+                    results.append({
+                        "distance": float(dist),
+                        "document": self.document_map[idx]
+                    })
+        else:
+            if self.vectors:
+                target = vec.flatten()
+                dists = [float(np.linalg.norm(target - v)) for v in self.vectors]
+                top_indices = np.argsort(dists)[:top_k]
+                for idx in top_indices:
+                    results.append({
+                        "distance": dists[idx],
+                        "document": self.document_map[int(idx)]
+                    })
         return results
 
 # Expose global asynchronous instance
