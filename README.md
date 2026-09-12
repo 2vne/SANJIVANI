@@ -46,6 +46,16 @@ KH015-CHAR_COAL/
 
 ---
 
+## 📸 Application Screenshots
+
+### 1. SANJIVANI Command Centre Dashboard & Live Map
+![SANJIVANI Command Centre Dashboard](screenshots/screenshot-1.png)
+
+### 2. SANJIVANI Safe Route Engine with Google Maps Geocoding & Red Alert Hazard Bypass
+![SANJIVANI Safe Route Engine](screenshots/screenshot-2.png)
+
+---
+
 ## 🚀 HOW TO DEPLOY BACKEND FIRST ON RENDER RIGHT NOW
 
 Follow these exact step-by-step instructions to deploy the FastAPI backend on **Render**:
